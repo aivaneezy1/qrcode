@@ -4,8 +4,8 @@ interface Params {
     id: string;
 }
 
-export default async function Page({ params }: { params: Params }) {
-    const { id } = params;
+const page = async ({ params }: { params: Promise<Params> }) => {
+    const { id } = await params
 
     const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/image/${id}`,
@@ -32,3 +32,4 @@ export default async function Page({ params }: { params: Params }) {
         </div>
     );
 }
+export default page;
