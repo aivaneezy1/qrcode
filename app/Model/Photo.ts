@@ -1,9 +1,22 @@
 import mongoose from "mongoose";
 
-const PhotoSchema = new mongoose.Schema({
+const PhotoMetaData = new mongoose.Schema({
   imageName: String,
   imageType: String,
   imageBase64: String,
+});
+
+const PhotoSchema = new mongoose.Schema({
+  sessionId: {
+    type: String,
+    required: true, // Track the user session
+  },
+  photos: [PhotoMetaData], // Multiple photos
+  uploadedAt: {
+    // uploaded date
+    type: Date,
+    default: Date.now,
+  },
 });
 
 const PhotoModel =

@@ -5,46 +5,59 @@ import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "react-toastify";
 
 const QrCodeComponent = () => {
-    const [file, setFile] = useState<File | null>(null);
+    // Create a persistent sessionId
+    if (typeof window !== "undefined") {
+        if (!localStorage.getItem("sessionId")) {
+            localStorage.setItem("sessionId", crypto.randomUUID());
+        }
+    }
+
+    const [files, setFiles] = useState<File[]>([]);
     const [qrValue, setQrValue] = useState<string | null>(null);
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [qrSize, setQrSize] = useState(300); // default size
-
-    const qrRef = useRef<HTMLCanvasElement | null>(null);
+    const [qrSize, setQrSize] = useState(300);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const qrRef = useRef<HTMLCanvasElement | null>(null);
 
-    // Dynamically calculate QR code size based on container width
+    // Responsive QR size based on container width
     useEffect(() => {
         const handleResize = () => {
             if (containerRef.current) {
                 const width = containerRef.current.offsetWidth;
-                setQrSize(Math.min(width, 400)); // max 400px
+                setQrSize(Math.min(width, 400));
             }
         };
 
-        handleResize(); // initial size
+        handleResize();
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    // Handle multiple file selection
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFile(e.target.files?.[0] || null);
+        const selected = Array.from(e.target.files || []);
+        setFiles(selected);
         setQrValue(null);
-        setImageUrl(null);
     };
-    // upload file
+
+    // Upload multiple images
     const handleUpload = async (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
-        if (!file) {
-            toast.error("Please select an image first!");
+
+        if (!files.length) {
+            toast.error("Please select at least one image!");
             return;
         }
 
         try {
             setIsLoading(true);
+
+            const sessionId = localStorage.getItem("sessionId");
             const formData = new FormData();
-            formData.append("image", file);
+
+            // payload to send to the server
+            files.forEach((file) => formData.append("images", file));
+            formData.append("sessionId", sessionId!);
 
             const response = await fetch("/api/upload", {
                 method: "POST",
@@ -52,36 +65,39 @@ const QrCodeComponent = () => {
             });
 
             const data = await response.json();
+            console.log(data.message);
+            if (response.ok && data.id) {
 
-            if (response.ok && data.imageUrl) {
-                toast.success("Image uploaded successfully!");
-                setImageUrl(data.imageUrl);
-                setQrValue(data.imageUrl);
+                toast.success(data.message);
+
+                // This URL will be encoded inside the QR code
+                const qrURL = `${process.env.NEXT_PUBLIC_BASE_URL}/image/${data.id}`;
+                setQrValue(qrURL);
             } else {
-                toast.error("Upload failed. Try again.");
+                toast.error(data.message);
             }
         } catch (err) {
-            toast.error("Error uploading image.");
             console.error(err);
+            toast.error("Error uploading images.");
         } finally {
             setIsLoading(false);
         }
     };
 
+    // Download QR code as PNG
     const handleDownloadQR = () => {
         if (!qrRef.current) return;
 
-        const canvas = qrRef.current;
-        const pngUrl = canvas
+        const pngUrl = qrRef.current
             .toDataURL("image/png")
             .replace("image/png", "image/octet-stream");
 
-        const downloadLink = document.createElement("a");
-        downloadLink.href = pngUrl;
-        downloadLink.download = "qrcode.png";
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
+        const link = document.createElement("a");
+        link.href = pngUrl;
+        link.download = "qrcode.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -94,33 +110,34 @@ const QrCodeComponent = () => {
                     Generatore di QR Code
                 </h1>
 
-                {/* Instructions */}
-                <div className="mb-6 text-gray-600 text-sm md:text-base space-y-1 md:space-y-2">
+                <div className="mb-6 text-gray-600 text-sm md:text-base">
                     <p className="font-semibold text-gray-700">Istruzioni:</p>
                     <ol className="list-decimal list-inside space-y-1">
-                        <li>Caricare un'immagine da mettere nel QR Code</li>
-                        <li>Scaricare il QR Code generato</li>
+                        <li>Caricare una o più immagini</li>
+                        <li>Generare il QR Code</li>
+                        <li>Condividere il QR per mostrare la galleria</li>
                     </ol>
                 </div>
 
-                {/* File Input */}
+                {/* FILE INPUT (multiple images allowed) */}
                 <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleFileChange}
                     className="mb-4 w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition cursor-pointer"
                 />
 
-                {/* Upload Button */}
+                {/* UPLOAD BUTTON */}
                 <button
                     onClick={handleUpload}
-                    disabled={!file || isLoading}
+                    disabled={!files.length || isLoading}
                     className="w-full px-6 py-3 mb-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition text-lg cursor-pointer"
                 >
                     {isLoading ? "Caricamento..." : "Generare QR Code"}
                 </button>
 
-                {/* QR Code */}
+                {/* QR CODE RESULT */}
                 <div className="mt-6 flex flex-col items-center w-full">
                     {qrValue && (
                         <>
@@ -131,6 +148,7 @@ const QrCodeComponent = () => {
                                 includeMargin
                                 className="mb-4 shadow-lg rounded-lg bg-white p-2 w-full max-w-full"
                             />
+
                             <button
                                 onClick={handleDownloadQR}
                                 className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-lg transition cursor-pointer"

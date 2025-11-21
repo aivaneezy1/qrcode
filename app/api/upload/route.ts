@@ -6,46 +6,62 @@ import PhotoModel from "@/app/Model/Photo";
 
 export async function POST(request: NextRequest) {
   try {
-    // variable
     const formData = await request.formData();
-    const file = formData.get("image") as File | null;
 
-    if (!file) {
+    // Ensure entries are File[]
+    const rawFiles = formData.getAll("images");
+    const files = rawFiles.filter((f): f is File => f instanceof File);
+
+    const sessionId = formData.get("sessionId");
+
+    if (!sessionId) {
       return NextResponse.json(
-        { message: "No file uploaded" },
+        { message: "Missing sessionId" },
+        { status: 400 }
+      );
+    }
+
+    if (files.length === 0) {
+      return NextResponse.json(
+        { message: "No files uploaded" },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const uniqueId = uuidv4();
-    const webpFilename = `${uniqueId}.webp`;
+    const processedImages: any[] = [];
 
-    // Compress and convert to WebP
-    const compressedBuffer = await sharp(buffer)
-      .resize({ width: 1280, withoutEnlargement: true })
-      .webp({ quality: 70 })
-      .toBuffer();
+    for (const file of files) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const uniqueId = uuidv4();
+      const webpFilename = `${uniqueId}.webp`;
 
-    const base64 = compressedBuffer.toString("base64");
-    const dataUri = `data:image/webp;base64,${base64}`;
+      // Convert + compress
+      const compressedBuffer = await sharp(buffer)
+        .resize({ width: 1280, withoutEnlargement: true })
+        .webp({ quality: 70 })
+        .toBuffer();
 
-    // Save image in MongoDB
-    const newPhoto = await PhotoModel.create({
-      imageName: webpFilename,
-      imageType: "image/webp",
-      imageBase64: dataUri,
+      const base64 = compressedBuffer.toString("base64");
+
+      processedImages.push({
+        imageName: webpFilename,
+        imageType: "image/webp",
+        imageBase64: `data:image/webp;base64,${base64}`,
+      });
+    }
+
+    // Save in DB
+    const record = await PhotoModel.create({
+      sessionId,
+      photos: processedImages,
     });
 
-    // Public image URL
-    const imageUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/image/${newPhoto._id}`;
-
-    return NextResponse.json(
-      { message: "Upload successful", imageUrl },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      message: "Upload successful",
+      id: record._id,
+    });
   } catch (err: any) {
     console.error("Upload error:", err);
     return NextResponse.json({ message: err.message }, { status: 500 });

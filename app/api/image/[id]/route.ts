@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Buffer } from "buffer";
 import { connectDB } from "../../../utils/connectDb";
 import PhotoModel from "@/app/Model/Photo";
 import { Types } from "mongoose";
@@ -12,16 +11,18 @@ export async function GET(
 
   await connectDB();
 
-  const image = await PhotoModel.findById(new Types.ObjectId(id));
-  if (!image) return new NextResponse("Not found", { status: 404 });
+  const record = await PhotoModel.findById(new Types.ObjectId(id));
+  if (!record) {
+    return NextResponse.json({ message: "Not found" }, { status: 404 });
+  }
 
-  const base64Data = image.imageBase64.replace(/^data:image\/\w+;base64,/, "");
-  const buffer = Buffer.from(base64Data, "base64");
-
-  return new NextResponse(buffer, {
-    headers: {
-      "Content-Type": image.imageType,
-      "Content-Disposition": `inline; filename="${image.imageName}"`,
-    },
+  // Return all photos in the record
+  return NextResponse.json({
+    sessionId: record.sessionId,
+    photos: record.photos.map((p: any) => ({
+      imageName: p.imageName,
+      imageType: p.imageType,
+      imageBase64: p.imageBase64, // already a data URI
+    })),
   });
 }

@@ -11,7 +11,7 @@ const NotFoundPage = () => {
             </p>
             {/*TORNA ALLA HOME PAGE */}
             <Link href="/">
-                <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
                     Torna alla Home
                 </button>
             </Link>
