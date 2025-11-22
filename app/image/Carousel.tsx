@@ -10,33 +10,35 @@ export default function Carousel({ images }: { images: string[] }) {
 
     return (
         <div className="relative w-full max-w-3xl mx-auto select-none">
-            {/* Image */}
-            <div className="overflow-hidden rounded-2xl shadow-xl">
-                <img
-                    key={current}
-                    src={images[current]}
-                    alt={`Slide ${current + 1}`}
-                    className="w-full h-auto object-contain transition-transform duration-500 ease-in-out transform scale-100 hover:scale-105"
-                />
+            <div className="flex items-center">
+                {/* Prev Button */}
+                <button
+                    onClick={prev}
+                    className="bg-white/70 backdrop-blur-md hover:bg-white/90 text-gray-800 p-2 rounded-full shadow transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                    aria-label="Previous"
+                >
+                    <ChevronLeftIcon className="w-6 h-6" />
+                </button>
+
+                {/* Image */}
+                <div className="overflow-hidden rounded-2xl shadow-xl mx-2 flex-1">
+                    <img
+                        key={current}
+                        src={images[current]}
+                        alt={`Slide ${current + 1}`}
+                        className="w-full h-auto object-contain transition-transform duration-500 ease-in-out transform scale-100 hover:scale-105"
+                    />
+                </div>
+
+                {/* Next Button */}
+                <button
+                    onClick={next}
+                    className="bg-white/70 backdrop-blur-md hover:bg-white/90 text-gray-800 p-2 rounded-full shadow transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                    aria-label="Next"
+                >
+                    <ChevronRightIcon className="w-6 h-6" />
+                </button>
             </div>
-
-            {/* Prev Button */}
-            <button
-                onClick={prev}
-                className="absolute top-1/2 left-4 -translate-y-1/2 bg-white/70 backdrop-blur-md hover:bg-white/90 text-gray-800 p-4 rounded-full shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer"
-                aria-label="Previous"
-            >
-                <ChevronLeftIcon className="w-6 h-6" />
-            </button>
-
-            {/* Next Button */}
-            <button
-                onClick={next}
-                className="absolute top-1/2 right-4 -translate-y-1/2 bg-white/70 backdrop-blur-md hover:bg-white/90 text-gray-800 p-4 rounded-full shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer"
-                aria-label="Next"
-            >
-                <ChevronRightIcon className="w-6 h-6" />
-            </button>
 
             {/* Dots */}
             <div className="flex justify-center mt-4 space-x-3">
@@ -52,5 +54,6 @@ export default function Carousel({ images }: { images: string[] }) {
                 ))}
             </div>
         </div>
+
     );
 }
